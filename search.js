@@ -2,81 +2,77 @@ import express from "express";
 import fs from "fs/promises";
 import path from "path";
 import cors from "cors";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
 import config from "config";
-
-// Set up __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import os from "os";
 
 const app = express();
 const port = process.env.PORT || 7000;
-const images = config.get("configs.IMAGES_FOLDER");
-// const port = process.env.PORT || 5000;
-const photosFolder = path.join(__dirname, images); // Absolute path for the images folder
+const photosFolder = config.get("configs.IMAGES_FOLDER");
 
-app.use(cors());
+// Helper function to get local IP address for easier access in the network
+const getLocalIP = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const net of interfaces[name]) {
+      if (net.family === "IPv4" && !net.internal) {
+        return net.address;
+      }
+    }
+  }
+  return "localhost"; // Fallback
+};
+
+// Middleware
+app.use(
+  cors({
+    origin: "*", // Allow access from any origin (adjust for security)
+    methods: ["GET"],
+  })
+);
 app.use(express.json());
-// Serve photos statically – this allows your frontend to request them via http://localhost:5000/<photo>
+
+// Verify `photosFolder` path is correctly resolved
+if (!photosFolder || !path.isAbsolute(photosFolder)) {
+  console.error("Error: IMAGES_FOLDER path is invalid.");
+  process.exit(1);
+}
+
+// Serve photos statically – This allows frontend to request them via http://<server-ip>:7000/<photo>
 app.use(express.static(photosFolder));
 
-/*
-  API: Search Photos by Name, Number Range, and Created Date Range
-  - Query parameter "query" is used for text search within filenames.
-  - Query parameters "min" and "max" are optional; when both are provided, the API filters images 
-    whose first found number in the filename is between min and max (inclusive).
-  - Query parameters "startDate" and "endDate" are optional; when provided (in format YYYY-MM-DD),
-    the API filters images whose creation date (based on birthtime) falls within that range.
-*/
 app.get("/api/search", async (req, res) => {
-  // Destructure query parameters with defaults.
   const { query = "", min = "", max = "", startDate = "", endDate = "" } = req.query;
 
   try {
     const files = await fs.readdir(photosFolder);
-    // Filter only image files (jpg and png)
     let matchedPhotos = files.filter(file => /\.(jpg|png)$/i.test(file));
 
-    // Filter by text query, if provided.
-    if (query.trim() !== "") {
+    if (query.trim()) {
       matchedPhotos = matchedPhotos.filter(file =>
         file.toLowerCase().includes(query.toLowerCase())
       );
     }
 
-    // Filter by range of numbers in the filename, if both min and max are provided.
-    if (min.trim() !== "" && max.trim() !== "") {
+    if (min.trim() && max.trim()) {
       const minNum = parseInt(min, 10);
       const maxNum = parseInt(max, 10);
       matchedPhotos = matchedPhotos.filter(file => {
-        // Extract the first number found in the filename
         const numberMatch = file.match(/\d+/);
-        if (numberMatch) {
-          const num = parseInt(numberMatch[0], 10);
-          return num >= minNum && num <= maxNum;
-        }
-        return false; // Exclude files that don't have a number
+        return numberMatch && parseInt(numberMatch[0], 10) >= minNum && parseInt(numberMatch[0], 10) <= maxNum;
       });
     }
 
-    // If both startDate and endDate are provided, filter based on file's creation date.
-    if (startDate.trim() !== "" && endDate.trim() !== "") {
-      // For each matched file, get its creation date as a YYYY-MM-DD string
+    if (startDate.trim() && endDate.trim()) {
       const filesWithDates = await Promise.all(
         matchedPhotos.map(async file => {
           const filePath = path.join(photosFolder, file);
           const stats = await fs.stat(filePath);
-          // Format birthtime to "YYYY-MM-DD"
-          const fileCreatedDate = stats.birthtime.toISOString().split("T")[0];
-          return { file, fileCreatedDate };
+          return { file, fileCreatedDate: stats.birthtime.toISOString().split("T")[0] };
         })
       );
-      // Filter files whose created date falls within the range (inclusive)
+
       matchedPhotos = filesWithDates
-        .filter(item => {
-          return item.fileCreatedDate >= startDate && item.fileCreatedDate <= endDate;
-        })
+        .filter(item => item.fileCreatedDate >= startDate && item.fileCreatedDate <= endDate)
         .map(item => item.file);
     }
 
@@ -87,6 +83,10 @@ app.get("/api/search", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// Start the server and make it accessible on the network
+app.listen(port, "0.0.0.0", () => {
+  const localIP = getLocalIP();
+  console.log(`Server running at:
+  - Localhost: http://localhost:${port}
+  - Network: http://${localIP}:${port}`);
 });
