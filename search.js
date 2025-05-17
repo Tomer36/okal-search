@@ -4,14 +4,17 @@ import path from "path";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import config from "config";
 
 // Set up __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const port = process.env.PORT || 5000;
-const photosFolder = path.join(__dirname, "images"); // Absolute path for the images folder
+const port = process.env.PORT || 7000;
+const images = config.get("configs.IMAGES_FOLDER");
+// const port = process.env.PORT || 5000;
+const photosFolder = path.join(__dirname, images); // Absolute path for the images folder
 
 app.use(cors());
 app.use(express.json());
