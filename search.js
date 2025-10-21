@@ -58,7 +58,11 @@ app.get("/api/search", async (req, res) => {
       const maxNum = parseInt(max, 10);
       matchedPhotos = matchedPhotos.filter(file => {
         const numberMatch = file.match(/\d+/);
-        return numberMatch && parseInt(numberMatch[0], 10) >= minNum && parseInt(numberMatch[0], 10) <= maxNum;
+        return (
+          numberMatch &&
+          parseInt(numberMatch[0], 10) >= minNum &&
+          parseInt(numberMatch[0], 10) <= maxNum
+        );
       });
     }
 
@@ -82,6 +86,49 @@ app.get("/api/search", async (req, res) => {
     res.status(500).json({ error: "Failed to search photos." });
   }
 });
+
+
+// ✅ NEW ROUTE: Check for missing invoice numbers in a given range
+app.get("/api/checkMissing", async (req, res) => {
+  const { start, end } = req.query;
+
+  if (!start || !end) {
+    return res.status(400).json({ error: "Missing start or end parameters." });
+  }
+
+  const startNum = parseInt(start, 10);
+  const endNum = parseInt(end, 10);
+
+  if (isNaN(startNum) || isNaN(endNum) || startNum > endNum) {
+    return res.status(400).json({ error: "Invalid range values." });
+  }
+
+  try {
+    const files = await fs.readdir(photosFolder);
+
+    // Extract numeric parts from filenames (e.g. "1234.jpg" → 1234)
+    const fileNumbers = files
+      .map(file => {
+        const match = file.match(/\d+/);
+        return match ? parseInt(match[0], 10) : null;
+      })
+      .filter(n => n !== null);
+
+    // Find missing numbers
+    const missing = [];
+    for (let i = startNum; i <= endNum; i++) {
+      if (!fileNumbers.includes(i)) {
+        missing.push(i);
+      }
+    }
+
+    res.json({ missing });
+  } catch (err) {
+    console.error("Error checking missing range:", err);
+    res.status(500).json({ error: "Failed to check missing range." });
+  }
+});
+
 
 // Start the server and make it accessible on the network
 app.listen(port, "0.0.0.0", () => {
