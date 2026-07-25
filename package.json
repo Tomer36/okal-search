@@ -5,13 +5,16 @@
   "type": "module",
   "main": "search.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node search.js",
+    "import:images": "node import-images.js",
+    "test": "node --check search.js && node --check db.js && node --check import-images.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "config": "^4.0.0",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "mysql2": "^3.11.0"
   }
 }

@@ -1,6 +1,12 @@
 {
   "configs": {
-    "IMAGES_FOLDER": "C:\\Users\\tamer\\OneDrive\\Documents\\GitHub\\okal-search\\images"
-
+    "IMAGES_FOLDER": "C:\\Users\\Tamer-Desktop\\Documents\\GitHub\\okal-delivery-docs\\res"
+  },
+  "db": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "root",
+    "password": "",
+    "name": "okal"
   }
 }
