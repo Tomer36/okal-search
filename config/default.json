@@ -1,6 +1,7 @@
 {
   "configs": {
-    "IMAGES_FOLDER": "F:\\Hash\\rep\\DocToPL"
+    "IMAGES_FOLDER": "F:\\Hash\\rep\\HashQueryWms\\PL"
+    
   },
   "db": {
     "host": "localhost",
